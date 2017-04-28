@@ -1,0 +1,22 @@
+* Create the router
+    DATA(lo_router) = NEW cl_rest_router( ).
+
+* Transports
+    lo_router->attach( iv_template = '/transports/{status:released}/{since:[0-9]+}'                   iv_handler_class = 'ZCL_RESOURCE_TRANSPORTS' ).
+    lo_router->attach( iv_template = '/transports/{status:released}/{since:[0-9]+}/{users}'           iv_handler_class = 'ZCL_RESOURCE_TRANSPORTS' ).
+    lo_router->attach( iv_template = '/transports/{status:modifiable}'                                iv_handler_class = 'ZCL_RESOURCE_TRANSPORTS' ).
+    lo_router->attach( iv_template = '/transports/{status:modifiable}/{users}'                        iv_handler_class = 'ZCL_RESOURCE_TRANSPORTS' ).
+
+
+    lo_router->attach( iv_template = '/transports/transport/{transport}'                              iv_handler_class = 'ZCL_RESOURCE_TRANSPORT' ).
+    lo_router->attach( iv_template = '/transports/transport/{transport}/{action:release}'             iv_handler_class = 'ZCL_RESOURCE_TRANSPORT' ).
+    lo_router->attach( iv_template = '/transports/transport/{transport}/objects'                      iv_handler_class = 'ZCL_RESOURCE_TRANSPORT' ).
+
+
+* Technical objects
+    lo_router->attach( iv_template = '/object/{type}/{name}'                                          iv_handler_class = 'ZCL_RESOURCE_OBJECT' ).
+    lo_router->attach( iv_template = '/object/{type}/{name}/{version}'                                iv_handler_class = 'ZCL_RESOURCE_OBJECT' ).
+
+
+* Return the router object
+    ro_root_handler = lo_router.

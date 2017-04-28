@@ -1,0 +1,78 @@
+CLASS zcl_resource_object DEFINITION
+  PUBLIC
+  INHERITING FROM cl_rest_resource
+  FINAL
+  CREATE PUBLIC .
+
+  PUBLIC SECTION.
+
+    METHODS if_rest_resource~get
+         REDEFINITION .
+  PROTECTED SECTION.
+  PRIVATE SECTION.
+ENDCLASS.
+
+
+
+CLASS ZCL_RESOURCE_OBJECT IMPLEMENTATION.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Public Method ZCL_RESOURCE_OBJECT->IF_REST_RESOURCE~GET
+* +-------------------------------------------------------------------------------------------------+
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD if_rest_resource~get.
+
+    TYPES: BEGIN OF ty_code,
+             version TYPE vrsd-versno,
+             system  TYPE sy-sysid,
+             code    TYPE string_table,
+           END OF ty_code.
+
+    DATA: lo_response_entity TYPE REF TO if_rest_entity,
+          lv_object_name     TYPE vrsd-objname,
+          lv_object_type     TYPE vrsd-objtype,
+          ls_code            TYPE ty_code,
+          lv_version         TYPE vrsd-versno,
+          lv_system          TYPE rfcdes-rfcdest,
+          lt_code            TYPE STANDARD TABLE OF abaptxt255,
+          lt_trdir           TYPE STANDARD TABLE OF trdir.
+
+
+
+    lv_object_type = to_upper( mo_request->get_uri_attribute( 'type' ) ).
+    lv_object_name = to_upper( mo_request->get_uri_attribute( 'name' ) ).
+    lv_version     = to_upper( mo_request->get_uri_attribute( 'version' ) ).
+
+    lv_object_name = cl_cpro_webdav_utils=>unescape_input_utf8( CONV #( lv_object_name ) ).
+    CALL FUNCTION 'SVRS_GET_REPS_FROM_OBJECT'
+      EXPORTING
+        object_name = lv_object_name
+        object_type = lv_object_type
+        versno      = lv_version
+*       destination =
+*       IV_NO_RELEASE_TRANSFORMATION       = ' '
+      TABLES
+        repos_tab   = lt_code
+        trdir_tab   = lt_trdir
+*       VSMODISRC   =
+*       VSMODILOG   =
+      EXCEPTIONS
+        no_version  = 1
+        OTHERS      = 2.
+
+    lo_response_entity = mo_response->create_entity( ).
+
+    IF sy-subrc <> 0.
+      mo_response->set_status( 500 ).
+    ELSE.
+      ls_code-code = lt_code.
+
+      lo_response_entity->set_content_type( if_rest_media_type=>gc_appl_json ).
+      mo_response->set_status( 200 ).
+      lo_response_entity->set_string_data( iv_data = /ui2/cl_json=>serialize( data = ls_code pretty_name = /ui2/cl_json=>pretty_mode-camel_case ) ).
+    ENDIF.
+
+
+  ENDMETHOD.
+ENDCLASS.

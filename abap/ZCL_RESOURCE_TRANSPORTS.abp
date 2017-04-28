@@ -1,0 +1,168 @@
+CLASS zcl_resource_transports DEFINITION
+  PUBLIC
+  INHERITING FROM cl_rest_resource
+  FINAL
+  CREATE PUBLIC .
+
+  PUBLIC SECTION.
+
+    TYPES: BEGIN OF ty_objects.
+            INCLUDE TYPE e071.
+    TYPES: adt_abs_url        TYPE string,
+           adt_rel_url        TYPE string,
+           object_description TYPE string,
+           is_source          TYPE abap_bool,
+           END OF ty_objects.
+    TYPES ty_objects_tab TYPE STANDARD TABLE OF ty_objects WITH DEFAULT KEY.
+    TYPES: BEGIN OF ty_source_code_object,
+             object             TYPE trobjtype,  "Type
+             obj_name           TYPE trobj_name,
+             object_description TYPE string,
+             adt_abs_url        TYPE string,
+             adt_rel_url        TYPE string,
+           END OF ty_source_code_object.
+    TYPES ty_source_code_objects_tab TYPE STANDARD TABLE OF ty_source_code_object WITH DEFAULT KEY.
+
+    TYPES: BEGIN OF ty_transport.
+    TYPES:  sysid TYPE sy-sysid.
+    TYPES:  documentation TYPE string.
+            INCLUDE TYPE e070v.
+            INCLUDE TYPE ctslg_cofile.
+    TYPES:  task_status   TYPE trstatus,
+            task_released TYPE abap_bool,
+            task_type(1)  TYPE c, "Workbench or customizing
+            objects       TYPE ty_objects_tab,
+            source_code   TYPE ty_source_code_objects_tab,
+            tasks         TYPE e070_t.
+    TYPES: END OF ty_transport.
+
+
+    METHODS if_rest_resource~get
+         REDEFINITION .
+  PROTECTED SECTION.
+  PRIVATE SECTION.
+
+    TYPES:
+      BEGIN OF ty_documentation,
+        text TYPE string,
+      END OF ty_documentation .
+ENDCLASS.
+
+
+
+CLASS ZCL_RESOURCE_TRANSPORTS IMPLEMENTATION.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Public Method ZCL_RESOURCE_TRANSPORTS->IF_REST_RESOURCE~GET
+* +-------------------------------------------------------------------------------------------------+
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD if_rest_resource~get.
+
+    TYPE-POOLS: ctslg.
+
+    TYPES: ty_systems TYPE STANDARD TABLE OF ctslg_system.
+
+    DATA: lv_user            TYPE string,
+          lv_users           TYPE string,
+          lt_transports      TYPE STANDARD TABLE OF ty_transport,
+          lv_since_x_days    TYPE i,
+          lv_since_date      TYPE sy-datum,
+          lv_parent          TYPE trkorr,
+          lv_status          TYPE string,
+          ls_transport       TYPE ty_transport,
+          lo_response_entity TYPE REF TO if_rest_entity,
+          lt_users           TYPE STANDARD TABLE OF uname,
+          r_user             TYPE trgr_user,
+          r_user_line        TYPE LINE OF trgr_user,
+          lv_format          TYPE string,
+          lo_transport       TYPE REF TO zcl_resource_transport.
+
+    lv_users        = to_upper( mo_request->get_uri_attribute( 'users' ) ).
+    lv_status       = mo_request->get_uri_attribute( 'status' ).
+    lv_since_x_days = mo_request->get_uri_attribute( 'since' ).
+    lv_format       = mo_request->get_uri_query_parameter( iv_name = 'format').
+
+    " Build user range
+    SPLIT lv_users AT '+' INTO TABLE lt_users.
+    LOOP AT lt_users INTO lv_user.
+      r_user_line-low    = lv_user.
+      r_user_line-sign   = 'I'.
+      r_user_line-option = 'EQ'.
+      APPEND r_user_line TO r_user.
+    ENDLOOP.
+
+    lv_since_date = sy-datum - lv_since_x_days.
+
+    IF lv_status = 'modifiable'.
+      SELECT  a~trkorr
+              a~trfunction
+              a~trstatus  AS task_status
+              a~tarsystem
+              a~as4user
+              a~as4date
+              a~as4time
+              a~strkorr
+              a~langu
+              b~as4text
+              a~client
+      FROM e070v AS a                                     "#EC CI_SUBRC
+      JOIN e070v AS b
+      ON b~trkorr = a~strkorr
+      INTO CORRESPONDING FIELDS OF TABLE lt_transports
+      WHERE ( a~trfunction = 'S' OR a~trfunction = 'Q' ) "Workbench and customizing tasks
+      AND   ( b~trstatus = 'D' OR b~trstatus = 'L' )     "Request Modifiable
+      AND   a~as4user IN r_user.
+
+      "Get documentation for transport
+      LOOP AT lt_transports INTO ls_transport.
+        lo_transport = NEW zcl_resource_transport( ls_transport-trkorr ).
+        ls_transport-documentation = lo_transport->get_documentation( ).
+        ls_transport-task_released = lo_transport->is_released( ).
+        IF ls_transport-trfunction = 'S'.
+          ls_transport-task_type = 'W'.
+        ELSE.
+          ls_transport-task_type = 'C'.
+        ENDIF.
+        MODIFY lt_transports FROM ls_transport.
+      ENDLOOP.
+
+    ELSEIF lv_status = 'released'.
+      SELECT * FROM e070v                                 "#EC CI_SUBRC
+        INTO CORRESPONDING FIELDS OF TABLE lt_transports
+        WHERE ( trfunction = 'K' OR trfunction = 'W' )     "Workbench and customizing tasks
+        AND   ( trstatus = 'R' OR trstatus = 'N' )      " Non Modifiable
+        AND   as4user IN r_user
+        AND   as4date >= lv_since_date.
+
+      "Get migration steps
+      LOOP AT lt_transports INTO ls_transport.
+        ls_transport-sysid = sy-sysid.
+        IF ls_transport-strkorr IS INITIAL.
+          lo_transport = NEW zcl_resource_transport( ls_transport-trkorr ).
+        ELSE.
+          lo_transport = NEW zcl_resource_transport( ls_transport-strkorr ).
+        ENDIF.
+        IF ls_transport-trfunction = 'K'.
+          ls_transport-task_type = 'W'.
+        ELSE.
+          ls_transport-task_type = 'C'.
+        ENDIF.
+        MOVE-CORRESPONDING lo_transport->get_migration_status( ) TO ls_transport.
+        MODIFY lt_transports FROM ls_transport.
+      ENDLOOP.
+    ENDIF.
+
+    LOOP AT lt_transports INTO ls_transport.
+      ls_transport-sysid = sy-sysid.
+      MODIFY lt_transports FROM ls_transport.
+    ENDLOOP.
+
+    lo_response_entity = mo_response->create_entity( ).
+    lo_response_entity->set_content_type( if_rest_media_type=>gc_appl_json ).
+    mo_response->set_status( 200 ).
+    lo_response_entity->set_string_data( iv_data = /ui2/cl_json=>serialize( data = lt_transports pretty_name = /ui2/cl_json=>pretty_mode-camel_case ) ).
+
+
+  ENDMETHOD.
+ENDCLASS.

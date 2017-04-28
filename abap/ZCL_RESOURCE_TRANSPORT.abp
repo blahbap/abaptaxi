@@ -1,0 +1,559 @@
+CLASS zcl_resource_transport DEFINITION
+  PUBLIC
+  INHERITING FROM cl_rest_resource
+  FINAL
+  CREATE PUBLIC .
+
+  PUBLIC SECTION.
+
+    CLASS-METHODS class_constructor.
+    METHODS constructor
+      IMPORTING
+        !i_trkorr TYPE trkorr OPTIONAL .
+    METHODS get_documentation
+      RETURNING
+        VALUE(r_documentation) TYPE string .
+    METHODS is_released
+      RETURNING
+        VALUE(r_is_released) TYPE abap_bool .
+    METHODS get_migration_status
+      RETURNING
+        VALUE(r_migration_status) TYPE ctslg_cofile .
+    CLASS-METHODS get_adt_url_for_object
+      IMPORTING
+        i_object_type TYPE trobjtype
+        i_object_name TYPE trobj_name
+      EXPORTING
+        e_abs_url     TYPE string
+        e_rel_url     TYPE string.
+    CLASS-METHODS get_description_for_object
+      IMPORTING
+        i_pgmid              TYPE pgmid
+        i_object             TYPE trobjtype
+      RETURNING
+        VALUE(r_description) TYPE string.
+
+    METHODS if_rest_resource~get
+         REDEFINITION .
+    METHODS if_rest_resource~post
+         REDEFINITION .
+  PROTECTED SECTION.
+  PRIVATE SECTION.
+
+    CLASS-DATA: gt_object_types TYPE STANDARD TABLE OF ko100.
+    TYPES:
+      BEGIN OF ty_documentation,
+        text TYPE string,
+      END OF ty_documentation .
+    TYPES:
+      BEGIN OF ty_update,
+        description   TYPE string,
+        documentation TYPE string,
+      END OF ty_update .
+
+    DATA gv_trkorr TYPE trkorr .
+
+    METHODS update
+      IMPORTING
+        !i_transport    TYPE zcl_resource_transports=>ty_transport
+      RETURNING
+        VALUE(r_result) TYPE string .
+    METHODS release
+      RETURNING
+        VALUE(r_result) TYPE string .
+    METHODS get_objects .
+
+ENDCLASS.
+
+
+
+CLASS ZCL_RESOURCE_TRANSPORT IMPLEMENTATION.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Static Public Method ZCL_RESOURCE_TRANSPORT=>CLASS_CONSTRUCTOR
+* +-------------------------------------------------------------------------------------------------+
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD class_constructor.
+
+    CALL FUNCTION 'TRINT_OBJECT_TABLE'
+      EXPORTING
+        iv_complete  = abap_true
+      TABLES
+        tt_types_out = gt_object_types.
+
+  ENDMETHOD.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Public Method ZCL_RESOURCE_TRANSPORT->CONSTRUCTOR
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] I_TRKORR                       TYPE        TRKORR(optional)
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD constructor.
+
+    super->constructor( ).
+    gv_trkorr = i_trkorr.
+
+  ENDMETHOD.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Static Public Method ZCL_RESOURCE_TRANSPORT=>GET_ADT_URL_FOR_OBJECT
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] I_OBJECT_TYPE                  TYPE        TROBJTYPE
+* | [--->] I_OBJECT_NAME                  TYPE        TROBJ_NAME
+* | [<---] E_ABS_URL                      TYPE        STRING
+* | [<---] E_REL_URL                      TYPE        STRING
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD get_adt_url_for_object.
+
+    DATA: lo_wb_object  TYPE REF TO cl_wb_object,
+          lo_adt_object TYPE REF TO cl_adt_object_reference.
+
+
+    TRY.
+        "Get workbench object
+        cl_wb_object=>create_from_transport_key(
+          EXPORTING
+            p_object                =  i_object_type
+            p_obj_name              =  i_object_name
+           RECEIVING
+             p_wb_object            =  lo_wb_object
+           EXCEPTIONS
+             objecttype_not_existing = 1
+             empty_object_key        = 2
+             key_not_available       = 3
+             OTHERS                  = 4
+        ).
+
+        "Get URI mapper
+        lo_adt_object = cl_adt_uri_mapper=>get_instance( )->if_adt_uri_mapper~map_wb_object_to_objref( lo_wb_object ).
+
+        "Get relative ADT URI
+        e_rel_url = lo_adt_object->ref_data-uri.
+
+*        " Get server URL
+        e_abs_url = cl_http_server=>get_location( protocol = 'HTTP' ).
+        e_abs_url = e_abs_url && e_rel_url.
+
+      CATCH cx_adt_uri_mapping.
+        e_abs_url = ''.
+        e_rel_url = ''.
+    ENDTRY.
+
+  ENDMETHOD.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Static Public Method ZCL_RESOURCE_TRANSPORT=>GET_DESCRIPTION_FOR_OBJECT
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] I_PGMID                        TYPE        PGMID
+* | [--->] I_OBJECT                       TYPE        TROBJTYPE
+* | [<-()] R_DESCRIPTION                  TYPE        STRING
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD get_description_for_object.
+
+    DATA: ls_object_type TYPE ko100.
+
+    READ TABLE gt_object_types WITH KEY pgmid = i_pgmid
+                                        object = i_object
+                                   INTO ls_object_type.
+
+    IF NOT ls_object_type-text IS INITIAL.
+      r_description = ls_object_type-text.
+    ELSE.
+      r_description = '<unknown>'.
+    ENDIF.
+
+  ENDMETHOD.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Public Method ZCL_RESOURCE_TRANSPORT->GET_DOCUMENTATION
+* +-------------------------------------------------------------------------------------------------+
+* | [<-()] R_DOCUMENTATION                TYPE        STRING
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD get_documentation.
+
+    DATA: lt_doc_text        TYPE string_table.
+
+    "Documentation from transrport
+    SELECT doktext INTO TABLE lt_doc_text "#EC CI_NOORDER  "#EC CI_SUBRC
+      FROM doktl
+      WHERE id = 'TA'
+      AND object = gv_trkorr
+      AND typ = 'T'.
+
+    CONCATENATE LINES OF lt_doc_text INTO r_documentation SEPARATED BY space. "#EC CI_NOORDER
+
+
+  ENDMETHOD.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Public Method ZCL_RESOURCE_TRANSPORT->GET_MIGRATION_STATUS
+* +-------------------------------------------------------------------------------------------------+
+* | [<-()] R_MIGRATION_STATUS             TYPE        CTSLG_COFILE
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD get_migration_status.
+
+    CALL FUNCTION 'TR_READ_GLOBAL_INFO_OF_REQUEST'
+      EXPORTING
+        iv_trkorr = gv_trkorr
+      IMPORTING
+        es_cofile = r_migration_status.
+
+  ENDMETHOD.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_RESOURCE_TRANSPORT->GET_OBJECTS
+* +-------------------------------------------------------------------------------------------------+
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD get_objects.
+    DATA: lv_dummy TYPE i.
+    lv_dummy = 1.
+  ENDMETHOD.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Public Method ZCL_RESOURCE_TRANSPORT->IF_REST_RESOURCE~GET
+* +-------------------------------------------------------------------------------------------------+
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD if_rest_resource~get.
+
+    DATA: lo_response_entity TYPE REF TO if_rest_entity,
+          ls_transport       TYPE zcl_resource_transports=>ty_transport,
+          lo_transport       TYPE REF TO zcl_resource_transport.
+
+    gv_trkorr = to_upper( mo_request->get_uri_attribute( 'transport' ) ).
+
+    " Details
+    SELECT SINGLE
+            a~trkorr
+            a~trfunction
+            a~trstatus  AS task_status
+            a~tarsystem
+            a~as4user
+            a~as4date
+            a~as4time
+            a~strkorr
+            a~langu
+            b~as4text
+            a~client
+      FROM e070v AS a                                     "#EC CI_SUBRC
+      LEFT JOIN e070v AS b
+      ON b~trkorr = a~strkorr
+      INTO CORRESPONDING FIELDS OF ls_transport
+      WHERE a~trkorr = gv_trkorr.
+
+    IF sy-subrc = 0.
+      "Get additional tasks
+      IF ls_transport-strkorr IS INITIAL.
+        SELECT * INTO TABLE ls_transport-tasks            "#EC CI_SUBRC
+          FROM e070
+          WHERE strkorr = ls_transport-trkorr.
+      ELSE.
+        SELECT * INTO TABLE ls_transport-tasks            "#EC CI_SUBRC
+          FROM e070
+          WHERE strkorr = ls_transport-strkorr.
+      ENDIF.
+
+
+      "Get documentation for transport
+      ls_transport-documentation = get_documentation( ).
+      ls_transport-task_released = is_released( ).
+
+      " Objects
+      SELECT * FROM e071 INTO CORRESPONDING FIELDS OF TABLE ls_transport-objects "#EC CI_SUBRC
+        WHERE trkorr = gv_trkorr.
+
+      "Fill ADT link and description for objects
+      LOOP AT ls_transport-objects INTO DATA(ls_object).
+        get_adt_url_for_object(
+        EXPORTING
+          i_object_type = ls_object-object
+          i_object_name = ls_object-obj_name
+        IMPORTING
+          e_abs_url = ls_object-adt_abs_url
+          e_rel_url = ls_object-adt_rel_url ).
+
+        ls_object-is_source = abap_true.
+
+        " Get source code ADT link
+        DATA: ls_source_object TYPE zcl_resource_transports=>ty_source_code_object.
+        CASE ls_object-object.
+          WHEN 'CLAS' OR 'METH' OR 'CLSD'. "Class objects
+            ls_source_object-object = 'CLAS'.
+            ls_source_object-obj_name = ls_object-obj_name(30). "For classes, only interested in the class name, not method name.
+            get_adt_url_for_object(
+              EXPORTING
+                i_object_type = 'CLAS'
+                i_object_name = ls_object-obj_name
+              IMPORTING
+                e_abs_url = ls_source_object-adt_abs_url
+                e_rel_url = ls_source_object-adt_rel_url ).
+
+            ls_source_object-adt_abs_url = ls_source_object-adt_abs_url && '/source/main'.
+            ls_source_object-adt_rel_url = ls_source_object-adt_rel_url && '/source/main'.
+            ls_source_object-object_description = 'Class'.
+            APPEND ls_source_object TO ls_transport-source_code.
+          WHEN 'WDYV'. "Web Dynpro view objects
+            ls_source_object-object = ls_object-object.
+            ls_source_object-obj_name = ls_object-obj_name.
+            get_adt_url_for_object(
+              EXPORTING
+                i_object_type = 'WDYV'
+                i_object_name = ls_object-obj_name
+              IMPORTING
+                e_abs_url = ls_source_object-adt_abs_url
+                e_rel_url = ls_source_object-adt_rel_url ).
+
+            ls_source_object-adt_abs_url = ls_source_object-adt_abs_url && '/source'.
+            ls_source_object-adt_rel_url = ls_source_object-adt_rel_url && '/source'.
+            ls_source_object-object_description = get_description_for_object( i_pgmid = ls_object-pgmid i_object = ls_object-object ).
+            APPEND ls_source_object TO ls_transport-source_code.
+          WHEN 'WDYC'. "Web Dynpro controller
+            ls_source_object-object = ls_object-object.
+            ls_source_object-obj_name = ls_object-obj_name.
+            get_adt_url_for_object(
+              EXPORTING
+                i_object_type = 'WDYC'
+                i_object_name = ls_object-obj_name
+              IMPORTING
+                e_abs_url = ls_source_object-adt_abs_url
+                e_rel_url = ls_source_object-adt_rel_url ).
+
+            ls_source_object-adt_abs_url = ls_source_object-adt_abs_url && '/source'.
+            ls_source_object-adt_rel_url = ls_source_object-adt_rel_url && '/source'.
+            ls_source_object-object_description = get_description_for_object( i_pgmid = ls_object-pgmid i_object = ls_object-object ).
+            APPEND ls_source_object TO ls_transport-source_code.
+          WHEN 'REPS' OR 'PROG'. " Report
+            ls_source_object-object = ls_object-object.
+            ls_source_object-obj_name = ls_object-obj_name.
+            get_adt_url_for_object(
+              EXPORTING
+                i_object_type = 'REPS'
+                i_object_name = ls_object-obj_name
+              IMPORTING
+                e_abs_url = ls_source_object-adt_abs_url
+                e_rel_url = ls_source_object-adt_rel_url ).
+
+            ls_source_object-adt_abs_url = ls_source_object-adt_abs_url && '/source/main'.
+            ls_source_object-adt_rel_url = ls_source_object-adt_rel_url && '/source/main'.
+            ls_source_object-object_description = get_description_for_object( i_pgmid = ls_object-pgmid i_object = ls_object-object ).
+
+            APPEND ls_source_object TO ls_transport-source_code.
+        ENDCASE.
+
+        "Get description of object
+        ls_object-object_description = get_description_for_object( i_pgmid = ls_object-pgmid i_object = ls_object-object ).
+
+        MODIFY ls_transport-objects FROM ls_object.
+      ENDLOOP.
+      SORT ls_transport-source_code BY object obj_name.
+      DELETE ADJACENT DUPLICATES FROM ls_transport-source_code COMPARING object obj_name.
+
+      " Get migration status
+      ls_transport-sysid = sy-sysid.
+      IF ls_transport-strkorr IS INITIAL.
+        lo_transport = NEW zcl_resource_transport( ls_transport-trkorr ).
+      ELSE.
+        lo_transport = NEW zcl_resource_transport( ls_transport-strkorr ).
+      ENDIF.
+
+      MOVE-CORRESPONDING lo_transport->get_migration_status( ) TO ls_transport.
+
+      lo_response_entity = mo_response->create_entity( ).
+      lo_response_entity->set_content_type( if_rest_media_type=>gc_appl_json ).
+      mo_response->set_status( 200 ).
+      lo_response_entity->set_string_data( iv_data = /ui2/cl_json=>serialize( data = ls_transport pretty_name = /ui2/cl_json=>pretty_mode-camel_case ) ).
+    ELSE.
+      mo_response->set_status( 404 ).
+    ENDIF.
+  ENDMETHOD.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Public Method ZCL_RESOURCE_TRANSPORT->IF_REST_RESOURCE~POST
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IO_ENTITY                      TYPE REF TO IF_REST_ENTITY
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD if_rest_resource~post.
+
+    DATA: lv_action          TYPE string,
+          lo_response_entity TYPE REF TO if_rest_entity,
+          lv_result          TYPE string.
+
+    gv_trkorr     = to_upper( mo_request->get_uri_attribute( 'transport' ) ).
+    lv_action     = to_upper( mo_request->get_uri_attribute( 'action' ) ).
+
+    CASE lv_action.
+      WHEN 'RELEASE'.
+        lv_result = release( ).
+
+      WHEN ''. "Update transport
+        DATA: ls_post_data TYPE zcl_resource_transports=>ty_transport.
+        /ui2/cl_json=>deserialize( EXPORTING
+                                    json =  mo_request->get_entity( )->get_string_data( )
+                                  CHANGING
+                                    data =  ls_post_data ).
+        lv_result = update( ls_post_data ).
+    ENDCASE.
+
+
+    lo_response_entity = mo_response->create_entity( ).
+    lo_response_entity->set_content_type( if_rest_media_type=>gc_appl_json ).
+    mo_response->set_status( 200 ).
+    lo_response_entity->set_string_data( lv_result ).
+
+  ENDMETHOD.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Public Method ZCL_RESOURCE_TRANSPORT->IS_RELEASED
+* +-------------------------------------------------------------------------------------------------+
+* | [<-()] R_IS_RELEASED                  TYPE        ABAP_BOOL
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD is_released.
+
+    DATA: lv_status TYPE trstatus.
+
+    SELECT SINGLE trstatus INTO lv_status                 "#EC CI_SUBRC
+      FROM e070
+      WHERE trkorr = gv_trkorr.
+
+    IF lv_status = 'O'
+        OR lv_status = 'R'
+        OR lv_status = 'N'.
+      r_is_released = abap_true.
+    ENDIF.
+
+  ENDMETHOD.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_RESOURCE_TRANSPORT->RELEASE
+* +-------------------------------------------------------------------------------------------------+
+* | [<-()] R_RESULT                       TYPE        STRING
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD release.
+
+
+    CALL FUNCTION 'TR_RELEASE_REQUEST'
+      EXPORTING
+        iv_trkorr                  = gv_trkorr
+      EXCEPTIONS
+        cts_initialization_failure = 1
+        enqueue_failed             = 2
+        no_authorization           = 3
+        invalid_request            = 4
+        request_already_released   = 5
+        repeat_too_early           = 6
+        error_in_export_methods    = 7
+        object_check_error         = 8
+        docu_missing               = 9
+        db_access_error            = 10
+        action_aborted_by_user     = 11
+        export_failed              = 12
+        OTHERS                     = 13.
+
+    IF sy-subrc <> 0.
+      r_result = | \{"status":"error", "message":"Unable to relase transport { gv_trkorr }"\}|.
+    ELSE.
+      r_result = | \{"status":"success", "message":"Transport { gv_trkorr } released"\}|.
+    ENDIF.
+
+  ENDMETHOD.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Private Method ZCL_RESOURCE_TRANSPORT->UPDATE
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] I_TRANSPORT                    TYPE        ZCL_RESOURCE_TRANSPORTS=>TY_TRANSPORT
+* | [<-()] R_RESULT                       TYPE        STRING
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  METHOD update.
+
+    DATA: ls_e070 TYPE e070,
+          ls_e07t TYPE e07t.
+
+    ls_e07t-as4text = i_transport-as4text.
+    ls_e07t-langu   = 'EN'.
+    ls_e07t-trkorr  = i_transport-strkorr.
+
+* Update description
+    CALL FUNCTION 'TRINT_UPDATE_COMM'            "#EC CI_SUBRC
+      EXPORTING
+        wi_trkorr       = i_transport-strkorr
+        wi_e070         = ls_e070
+        wi_e07t         = ls_e07t
+        wi_sel_e07t     = abap_true
+      EXCEPTIONS
+        locked_entries  = 1
+        db_access_error = 2
+        OTHERS          = 3.
+
+    IF sy-subrc <> 0.
+
+    ENDIF.
+
+
+* Update documentation
+    TYPES: ty_line(74) TYPE c.
+
+    DATA: lt_text_old TYPE STANDARD TABLE OF ty_line,
+          lt_text     TYPE STANDARD TABLE OF ty_line,
+          lv_title    TYPE dsyst-doktitle,
+          ls_head     TYPE thead,
+          lv_id       TYPE dokhl-id VALUE 'TA',
+          lv_object   TYPE dokhl-object,
+          lv_langu    TYPE dokhl-langu VALUE 'E'.
+
+    lv_object = gv_trkorr.
+    TRY.
+
+        CALL FUNCTION 'G_SPLIT_LINE'
+          EXPORTING
+            input_line   = i_transport-documentation
+          TABLES
+            export_lines = lt_text.
+
+        LOOP AT lt_text INTO DATA(lv_line).
+          CONCATENATE '/' lv_line INTO lv_line SEPARATED BY space.
+          MODIFY lt_text FROM lv_line.
+        ENDLOOP.
+
+        CALL FUNCTION 'DOCU_READ'
+          EXPORTING
+            id       = lv_id
+            langu    = lv_langu
+            object   = lv_object
+            typ      = 'T'
+            version  = '001'
+          IMPORTING
+            doktitle = lv_title
+            head     = ls_head
+          TABLES
+            line     = lt_text_old.
+
+
+        CALL FUNCTION 'DOCU_UPDATE'
+          EXPORTING
+            head    = ls_head
+            state   = 'A'
+            typ     = 'T'
+            version = '1'
+          TABLES
+            line    = lt_text.
+
+        r_result = | \{"status":"success", "message":"Documentation updated for { gv_trkorr }"\}|.
+        mo_response->set_status( 200 ).
+
+      CATCH cx_bcs INTO DATA(lo_error).
+        r_result = | \{"status":"error", "message":"BCS conversion error - { lo_error->get_text( ) }"\}|.
+    ENDTRY.
+
+  ENDMETHOD.
+ENDCLASS.
