@@ -1,0 +1,67 @@
+<div ng-controller="sourceController">
+	
+	<ul class="nav nav-tabs" role="tablist">
+	    <li role="presentation"><a href="#modifiable" aria-controls="modifiable" role="tab" data-toggle="tab">Modifiable</a></li>
+	    <li role="presentation"><a href="#released" aria-controls="released" role="tab" data-toggle="tab">Released</a></li>
+	    <li role="presentation" ><a href="#detail" aria-controls="detail" role="tab" download="" ta-toggle="tab">Details</a></li>
+	    <li role="presentation" class="active"><a href="#source" aria-controls="source" role="tab" data-toggle="tab">Source</a></li>
+	 </ul>
+	
+	 	
+
+	<div class="row" >	
+		<div class="col-lg-12 col-md-12 col-xs-12">
+			<p>
+				<h3>Search for and download source code objects (use wildcard *  for search):</h3>
+			</p>
+			<form class="form-inline">			
+      			<label for="system">System</label>
+      			<select class="form-control"  id="system" ng-options="system.name for system in systems track by system.name"
+      					ng-model="selection.selectedSystem"></select>
+				<label for="object">Object type</label>
+				<select id="object" class="form-control" 
+					ng-options="option.name for option in selection.options track by option.id"
+      				ng-model="selection.selectedOption">
+      			</select>			
+		    
+		       <input ng-show="isSelected(1)" id="report" class="form-control" type="text"  ng-model="selection.report" placeholder="report name" uib-typeahead="report for report in getObjects($viewValue, 'report')">
+		       <input ng-show="isSelected(2)" id="class" class="form-control" type="text"  ng-model="selection.class" placeholder="class name" uib-typeahead="report for report in getObjects($viewValue, 'class')">
+		       <input ng-show="isSelected(3)" id="wdcomponent" class="form-control" type="text" ng-model="selection.wdComponent" placeholder="Web Dynpro Component" uib-typeahead="report for report in getObjects($viewValue, 'wdComponent')">
+		       <input ng-show="isSelected(4)" id="wdview" class="form-control" type="text"  ng-model="selection.wdView" placeholder="Web Dynpro View">
+
+		       <button class="btn btn-primary" ng-click="saveSource()">Download source</button>
+			   <i ng-show="isLoading" class="fa fa-spin fa-spinner"></i>
+			</form>
+
+		</div>
+	</div>
+
+	<div class="row" >	
+	</div>
+
+<!-- 	<div class="row">
+		<div id="compare"></div>
+	</div>
+ -->
+
+</div>
+
+<script type="text/javascript">
+	
+// 	$(document).ready(function () {
+// 	$('#compare').mergely({
+// 		width: 'auto',
+// 		height: 400,
+// 		cmsettings: { 	readOnly: false, 
+// 						lineNumbers: true,
+// 					},
+// 		lhs: function(setValue) {
+// 			setValue('the quick red fox\njumped over the hairy dog');
+// 		},
+// 		rhs: function(setValue) {
+// 			setValue('the quick brown fox\njumped over the lazy dog');
+// 		}
+// 	});
+// });
+</script>
+

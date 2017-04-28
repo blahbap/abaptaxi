@@ -1,0 +1,89 @@
+<div ng-controller="detailTransportsController">
+	
+	<ul class="nav nav-tabs" role="tablist">
+	    <li role="presentation"><a href="#modifiable" aria-controls="modifiable" role="tab" data-toggle="tab">Modifiable</a></li>
+	    <li role="presentation"><a href="#released" aria-controls="released" role="tab" data-toggle="tab">Released</a></li>
+	    <li role="presentation" class="active"><a href="#detail" aria-controls="detail" role="tab" data-toggle="tab">Details</a></li>
+	    <li role="presentation"><a href="#source" aria-controls="source" role="tab" data-toggle="tab">Source</a></li>
+	 </ul>
+	
+	 	
+
+	<div class="row" >	
+		<div class="col-lg-12 col-md-12 col-xs-12">
+			<p></p>
+			<form class="form-inline">			
+				 <label for="task">Task</label>
+				<input id="task" class="form-control" ng-model="taskName" placeholder="task">
+				<span><strong>{{selectedTask.as4text}}</strong></span>
+				<span ng-hide="selectedTask.taskReleased"> 
+					(not released)
+				</span>
+				<span class="spaced" ng-repeat="system in selectedTask.systems" ng-show="selectedTask.taskReleased">
+					<span class="label label-default" ng-class="getSystemErrorClass(system)" tooltip="Imported at {{system.steps[0].actions[0].date}}   {{system.steps[0].actions[0].time}}">
+						{{system.systemid}}
+					</span>
+				</span>
+			</form>
+
+		</div>
+	</div>
+
+	<div class="row" >	
+<!-- 		<div class="col-lg-6 col-md-6 col-xs-12">			
+			<h3>Documentation</h3>
+		    <div marked="selectedTask.documentation" class="documentation"></div>
+		</div>
+ -->
+		<div class="col-lg-12 col-md-12 col-xs-12">
+			<h4>Source code objects</h4>
+			<table class="table table-striped">
+					<thead>
+						<tr>
+							<th>Type</th>
+							<th>Name</th>
+							<th>View</th>
+							<th>Download source</th>
+						</tr>						
+					</thead>
+
+					<tbody>
+						<tr ng-repeat="object in selectedTask.sourceCode | orderBy:'object'">
+							<td class="col-md-4">{{object.objectDescription}}</td>
+							<td class="col-md-4">{{object.objName}}</td>
+							<td class="col-md-2"><a target="_blank" href="{{object.adtAbsUrl}}">View</a></td>
+							<!-- <td><a ng-click="saveSource(selectedTask.sysid, object)" href="">Download</a></td> -->
+							<td class="col-md-2"><a ng-repeat="system in systems" ng-click="saveSource(system.name, object)">{{system.name}}&nbsp</a></td>
+						</tr>
+					</tbody>				
+
+			</table>
+			<h4>All objects</h4>
+			<table class="table table-striped">
+					<thead>
+						<tr>
+							<th>Type</th>
+							<th>Name</th>
+							<th>Pgmid</th>
+							<th>Object</th>
+						</tr>						
+					</thead>
+
+					<tbody>
+						<tr ng-repeat="object in selectedTask.objects | orderBy:'objectDescription'">
+							<td class="col-md-4">{{object.objectDescription}}</td>
+							<td class="col-md-4">{{object.objName}}</td>
+							<td class="col-md-2">{{object.pgmid}}</td>
+							<td class="col-md-2">{{object.object}}</td>
+						</tr>
+					</tbody>				
+
+			</table>
+		</div> 
+
+
+
+	</div>
+
+</div>
+

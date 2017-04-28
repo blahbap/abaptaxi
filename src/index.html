@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en" ng-app="ISSOWDash">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>ABAP Taxi</title>
+  
+  <!-- STYLES -->
+  <!-- build:css lib/css/main.min.css -->
+  <link rel="stylesheet" type="text/css" href="components/bootstrap/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" type="text/css" href="components/bootstrap/dist/css/bootstrap-theme.min.css">
+  <link rel="stylesheet" type="text/css" href="components/font-awesome/css/font-awesome.min.css">
+  <link rel="stylesheet" type="text/css" href="components/rdash-ui/dist/css/rdash.css">
+  <link rel="stylesheet" type="text/css" href="components/angular-ui-notification/dist/angular-ui-notification.min.css">
+  <link rel="stylesheet" type="text/css" href="css/default.css">
+  <!-- endbuild -->
+
+  <!-- SCRIPTS -->
+  <!-- build:js lib/js/main.min.js -->
+  <script type="text/javascript" src="components/jquery/dist/jquery.min.js"></script>
+  <script type="text/javascript" src="components/angular/angular.min.js"></script>
+  <script type="text/javascript" src="components/angular-cookies/angular-cookies.min.js"></script>
+  <script type="text/javascript" src="components/angular-ui-router/release/angular-ui-router.min.js"></script>
+  <script type="text/javascript" src="components/bootstrap/dist/js/bootstrap.min.js"></script>
+  <script type="text/javascript" src="components/lodash/dist/lodash.min.js"></script>
+  <script type="text/javascript" src="components/angular-ui-notification/dist/angular-ui-notification.min.js"></script>
+  <script type="text/javascript" src="components/angular-sanitize/angular-sanitize.min.js"></script>
+  <script type="text/javascript" src="components/angular-marked/dist/angular-marked.min.js"></script>
+  <script type="text/javascript" src="components/marked/marked.min.js"></script>
+  <script type="text/javascript" src="components/moment/min/moment.min.js"></script>
+  <script type="text/javascript" src="components/moment-timezone/builds/moment-timezone-with-data.min.js"></script>
+  <script type="text/javascript" src="components/angular-animate/angular-animate.min.js"></script>
+  <script type="text/javascript" src="components/angular-base64/angular-base64.min.js"></script>
+  <script type="text/javascript" src="components/angular-file-saver/dist/angular-file-saver.bundle.min.js"></script>
+  <script type="text/javascript" src="components/angular-bootstrap/ui-bootstrap-tpls.min.js"></script>
+  <!-- endbuild -->
+
+  <!-- Custom Scripts -->
+  <!-- build:js js/dashboard.min.js -->
+  <script type="text/javascript" src="js/module.js"></script>
+  <script type="text/javascript" src="js/routes.js"></script>
+  <script type="text/javascript" src="js/constants.js"></script>
+  <script type="text/javascript" src="js/init.js"></script>
+
+  <script type="text/javascript" src="js/services/transportsService.js"></script>
+  <script type="text/javascript" src="js/services/loginService.js"></script>
+
+  <script type="text/javascript" src="js/directives/loading.js"></script>
+  <script type="text/javascript" src="js/directives/errSrc.js"></script>
+  <script type="text/javascript" src="js/directives/loggedInSystems.js"></script>
+
+  <script type="text/javascript" src="js/controllers/AlertController.js"></script>
+  <script type="text/javascript" src="js/controllers/MasterController.js"></script>
+  <script type="text/javascript" src="js/controllers/ModifiableTransportsController.js"></script>
+  <script type="text/javascript" src="js/controllers/ReleasedTransportsController.js"></script>
+  <script type="text/javascript" src="js/controllers/DetailTransportController.js"></script>
+  <script type="text/javascript" src="js/controllers/SourceController.js"></script>
+  <!-- endbuild -->
+  
+
+</head>
+<body ng-controller="MasterCtrl">
+  <div id="page-wrapper" ng-class="{'open': toggle}" ng-cloak>
+
+    <!-- Sidebar -->
+    <div id="sidebar-wrapper">
+      <ul class="sidebar">
+        <li class="sidebar-main">
+          <a ng-click="toggleSidebar()">
+            ABAP Taxi
+            <span class="menu-icon glyphicon glyphicon-transfer"></span>
+          </a>
+        </li> 
+        <li class="sidebar-title"><span>Navigation</span></li>        
+        <div>          
+          <li class="sidebar-list">
+            <a href="#/modifiable">Transports<span class="menu-icon fa fa-truck"></span></a>
+          </li>
+        </div>
+      </ul>
+      <!-- <div class="sidebar-footer">
+        <div class="col-xs-4">
+          <a href="#">
+            Support
+          </a>
+        </div>
+      </div> -->
+    </div>
+    <!-- End Sidebar -->  
+
+    <div id="content-wrapper">
+      <div class="page-content">
+
+        <!-- Header Bar -->
+        <div class="row header">
+          <div class="col-xs-12">
+
+            <div class="meta">
+              <div class="page">
+                Dashboard
+              </div>
+              <div class="breadcrumb-links">
+                Home 
+              </div>
+            </div>  
+          </div>                      
+        </div>  
+        <!-- End Header Bar -->
+
+        <!-- Main Content -->
+        <ui-view></ui-view>
+
+      </div><!-- End Page Content -->
+    </div><!-- End Content Wrapper --> 
+  </div><!-- End Page Wrapper -->
+</body>
+
+</html>

@@ -1,0 +1,13 @@
+{
+	"systems":[
+		{	
+			"name":"DE1", 
+			"url":"https://sap-de1.mycomp.net"
+		},
+		{	
+			"name":"DE2", 
+			"url":"https://sap-de2.mycomp.net"
+		}
+	],
+	"userProfileImageUrl":"https://intranet.com/{userName}Thumb.jpg'"
+}

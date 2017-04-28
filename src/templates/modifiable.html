@@ -1,0 +1,129 @@
+<div ng-controller="modifiableTransportsController">
+	
+	<ul class="nav nav-tabs" role="tablist">
+	    <li role="presentation" class="active"><a href="#modifiable" aria-controls="modifiable" role="tab" data-toggle="tab">Modifiable</a></li>
+	    <li role="presentation"><a href="#released" aria-controls="released" role="tab" data-toggle="tab">Released</a></li>
+	    <li role="presentation"><a href="#detail" aria-controls="detail" role="tab" data-toggle="tab">Details</a></li>
+	    <li role="presentation"><a href="#source" aria-controls="source" role="tab" data-toggle="tab">Source</a></li>
+	 </ul>
+	
+	 	
+
+	<div class="row" >	
+		<div class="col-lg-12 col-md-12 col-xs-12">
+			<p></p>
+			<h4 class="pull-right">{{filtered.length}} modifiable tasks</h4>
+				<form class="form-inline" ng-submit="searchTransports()">
+					<label for="users">User(s)</label>
+					<input id="users" class="form-control" type="text" placeholder="user" ng-model="searchUsers" >
+					<button class="btn btn-default" >Search</button>
+					&nbsp
+					<label for="filter">Filter</label>
+ 					<input id="filter" class="form-control" type="text" ng-model="userFilter" placeholder="Filter, i.e 'INC1541289'">
+					<label>Show systems</label>
+					&nbsp
+					<div class="btn-group" data-toggle="buttons">
+					  <label ng-repeat="system in developmentSystems" class="btn btn-primary btn-xs active" ng-click="filterOnSystem(system)">
+					    <input type="checkbox" checked autocomplete="off">{{system.name}}
+					  </label>
+					</div>
+				</form>		
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col-lg-12 col-md-12 col-xs-12">
+			<div  >
+				<rd-loading ng-show="loading"></rd-loading>
+			</div>
+			<div ng-hide="loading" >				
+				<table class="table table-striped">
+					<thead>
+						<tr>
+							<th></th>
+							<th>User</th>
+							<th>System</th>
+							<th>Task</th>
+							<th>Request</th>
+							<th>Task released</th>
+							<th>Type</th>
+							<!-- <th>Last changed date</th> -->
+							<!-- <th>Last changed time</th> -->
+							<th>Last Modified</th>
+							<!-- <th>Description</th> -->
+							<th>Documentation</th>
+						</tr>						
+					</thead>
+					<tbody>
+						<tr  class="animate-repeat" ng-repeat="transport in filtered = ( transports | orderBy:['taskReleased', 'sysid', 'as4user', '-as4date', '-as4time'] | filter: userFilter | filter: systemFilter )" >
+							<td><img width="50px" err-src="/img/avatar.jpg" ng-src='http://my-wcm.cop.net/User%20Photos/Profile%20Pictures/{{transport.as4user}}_MThumb.jpg' class='img-circle'></td>
+							<td>{{transport.as4user}}</td>
+							<td >{{transport.sysid}}</td>
+							<td><a href="#/detail" ng-click="setSelectedTask(transport)">{{transport.trkorr}}</a></td>
+							<td>{{transport.strkorr}}</td>
+							<td ng-show="transport.taskReleased" align="center"><i class="fa fa-check-square fa-lg text-success" tooltip="Task is released, parent request is modifiable"></i></td>
+							<td ng-hide="transport.taskReleased" align="center"><button class="btn btn-default" ng-click="releaseTask(transport)" tooltip="Release task"><i class="fa fa-truck fa-flip-horizontal" ></i></button></td>
+							<td><i class="fa" ng-class="{'fa-cogs':transport.taskType === 'C', 'fa-wrench':transport.taskType === 'W', 'fa-clone':transport.taskType === 'T' }" tooltip="{{getTransportTypeTooltip(transport)}}"></i></td>
+							<!-- <td>{{transport.as4date}}</td> -->
+							<!-- <td>{{transport.as4time}}</td> -->
+							<td><div tooltip="{{transport.as4date}} {{transport.as4time}} ">{{getLastModified(transport)}}</div></td>
+							<!-- <td>{{transport.as4text}}</td> -->
+ 							<td><h4 class="documentation-header">{{transport.as4text}}</h4><div marked="transport.documentation" class="documentation"></div></td>							
+ 							<td>
+								<button ng-hide="transport.taskReleased" class="btn btn-xs btn-default" ng-click="setEditTask(transport)" data-toggle="modal" data-target="#infoModal" >Edit</button>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</div>	
+	</div>
+
+
+	<!-- Documentation modal -->
+	<div class="modal fade" id="infoModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+	  <div class="modal-dialog modal-lg" role="document">
+	    <div class="modal-content">
+	      <div class="modal-header">
+	        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+	        <h4 class="modal-title" id="myModalLabel"><i class="fa fa-pencil fa"></i> Edit task {{editTask.trkorr}}</h4>
+	      </div>
+	      <div class="modal-body">
+
+		    <div class="row">
+				<div class="col-lg-12 col-md-12 col-xs-12">
+						<div class="form-group">
+						    <label for="description">Description</label>
+						    <input maxlength="60" type="text" class="form-control" id="description" placeholder="description" ng-model="editTask.as4text" value="editTask.as4text">
+						</div>
+				</div>
+			</div>
+			<div class="row">
+				<div class="col-lg-6 col-md-6 col-xs-12">
+					  	<div class="form-group">
+						    <label for="documentation">Documentation - use <a target="_blank" href="https://guides.github.com/features/mastering-markdown/">markdown</a> for documentation</label>
+						    <textarea class="form-control" id="documentation" cols="72" rows="20" ng-model="editTask.documentation">
+						    	{{editTask.documentation}}
+						    </textarea>
+						</div>
+				</div>
+				<div class="col-lg-6 col-md-6 col-xs-12">
+					  	<div class="form-group">
+						    <label for="preview">Preview</label>
+						    <div id="preview" marked="editTask.documentation" class="documentation"></div>
+						</div>
+				</div>
+			</div>
+	      </div>
+	      <div class="modal-footer">
+		    <button type="submit" ng-click="updateTransport()" class="btn btn-primary">Save</button>
+	        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+	      </div>
+	    </div>
+	  </div>
+	</div>
+
+</div>
+
+
+

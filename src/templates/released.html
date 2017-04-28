@@ -1,0 +1,80 @@
+<ul class="nav nav-tabs" role="tablist">
+    <li role="presentation"><a href="#modifiable" aria-controls="modifiable" role="tab" data-toggle="tab">Modifiable</a></li>
+    <li role="presentation" class="active"><a href="#released" aria-controls="released" role="tab" data-toggle="tab">Released</a></li>
+    <li role="presentation"><a href="#detail" aria-controls="detail" role="tab" data-toggle="tab">Details</a></li>
+    <li role="presentation"><a href="#source" aria-controls="source" role="tab" data-toggle="tab">Source</a></li>
+ </ul>
+
+<div ng-controller="releasedTransportsController">
+	<div class="row">	
+		<div class="col-lg-12 col-md-12 col-xs-12">
+			<p></p>
+			<h4 class="pull-right">{{filtered.length}} released requests</h4>
+			<form class="form-inline">
+				<label for="filter">Filter</label>
+				<input id="filter" class="form-control" type="text" ng-model="userFilter" placeholder="Filter, i.e 'My project'">
+				<div class="btn-group" role="group">
+					<button ng-click="updateListSince(0, 0)" ng-class="isActive(0)" class="btn btn-default">Today</button>
+					<button ng-click="updateListSince(7, 1)" ng-class="isActive(1)" class="btn btn-default">Last week</button>
+					<button ng-click="updateListSince(30, 2)" ng-class="isActive(2)" class="btn btn-default">Last 30 days</button>
+					<button ng-click="updateListSince(60, 3)" ng-class="isActive(3)" class="btn btn-default">Last 60 days</button>
+					<button ng-click="updateListSince(365, 4)" ng-class="isActive(4)" class="btn btn-default">Since 1 year</button>
+				</div>
+				<div class="checkbox">
+				  <label>
+				    <input ng-click="setCustomFilter()" type="checkbox" value="">
+				    Not in production
+				  </label>
+				</div>
+			</form>
+		</div>
+	</div>
+
+	<div class="row">	
+		<div class="col-lg-12 col-md-12 col-xs-12">
+			<div>
+				<rd-loading ng-show="loading">
+			</div>
+			<div ng-hide="loading">				
+				<table class="table table-striped">
+					<thead>
+						<tr>
+							<th></th>
+							<th>User</th>
+							<th>Task</th>
+							<th>Type</th>
+							<th>Last updated</th>
+							<!-- <th>Last changed date</th> -->
+							<!-- <th>Last changed time</th> -->
+							<th>Description</th>
+							<th>Migrated to</th>
+						</tr>						
+					</thead>
+					<tbody>
+						<tr  class="animate-repeat" ng-repeat="transport in filtered = ( transports | filter:userFilter | filter:customFilter | orderBy:['-as4date', '-as4time'] )">
+							<td><img width="50px" err-src="img/avatar.jpg" ng-src='http://my-wcm.cop.net/User%20Photos/Profile%20Pictures/{{transport.as4user}}_MThumb.jpg' class='img-circle'></td>
+							<td>{{transport.as4user}}</td>
+							<td><a href="#/detail" ng-click="setSelectedTask(transport)">{{transport.trkorr}}</a></td>
+							<td><i class="fa" ng-class="{'fa-cogs':transport.taskType === 'C', 'fa-wrench':transport.taskType === 'W' }" tooltip="{{transport.taskType === 'W'?'Workbench':'Customizing'}}"></i></td>
+							<td><div tooltip="{{transport.as4date}} {{transport.as4time}} ">{{getLastModified(transport)}}</div></td>
+							<!-- <td>{{transport.as4date}}</td> -->
+							<!-- <td>{{transport.as4time}}</td> -->
+							<td>{{transport.as4text}}</td>								
+							<td>
+								<span class="spaced" ng-repeat="system in transport.systems">
+									<span class="label label-default" ng-class="getSystemErrorClass(system)" tooltip="Imported at {{system.steps[0].actions[0].date}}   {{system.steps[0].actions[0].time}}">
+										{{system.systemid}}
+									</span>
+								</span>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</div>
+</div>
+
+
+
+
