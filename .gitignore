@@ -49,3 +49,11 @@ Icon
 
 # Configuration 
 /config-CoP
+
+
+# Bower
+.bowerrc
+
+
+# Configuration 
+/config/default.json
